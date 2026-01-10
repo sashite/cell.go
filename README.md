@@ -100,28 +100,28 @@ func main() {
     // Must-style conversion (panics on error)
     indices = cell.MustToIndices("e4") // [4, 3]
 
-    // Convert 0-indexed integer slices back to CELL coordinates
-    coord, err := cell.FromIndices([]int{0, 0})
+    // Convert 0-indexed integers to CELL coordinates
+    coord, err := cell.FromIndices(0, 0)
     if err == nil {
         fmt.Println(coord) // "a1"
     }
 
-    coord, err = cell.FromIndices([]int{4, 3})
+    coord, err = cell.FromIndices(4, 3)
     if err == nil {
         fmt.Println(coord) // "e4"
     }
 
-    coord, err = cell.FromIndices([]int{0, 0, 0})
+    coord, err = cell.FromIndices(0, 0, 0)
     if err == nil {
         fmt.Println(coord) // "a1A"
     }
 
     // Must-style conversion (panics on error)
-    coord = cell.MustFromIndices([]int{1, 1, 1}) // "b2B"
+    coord = cell.MustFromIndices(1, 1, 1) // "b2B"
 
     // Round-trip conversion
     indices = cell.MustToIndices("e4")
-    coord = cell.MustFromIndices(indices)
+    coord = cell.MustFromIndices(indices...)
     fmt.Println(coord) // "e4"
 }
 ```
@@ -195,8 +195,8 @@ func Dimensions(s string) int
 func ToIndices(s string) ([]int, error)
 func MustToIndices(s string) []int  // panics on error
 
-func FromIndices(indices []int) (string, error)
-func MustFromIndices(indices []int) string  // panics on error
+func FromIndices(indices ...int) (string, error)
+func MustFromIndices(indices ...int) string  // panics on error
 ```
 
 ### Regular Expression Access
@@ -270,7 +270,7 @@ fmt.Println(cell.MustToIndices("ab1")) // [27, 0]
 fmt.Println(cell.MustToIndices("zz1")) // [701, 0]
 
 // And so on...
-fmt.Println(cell.MustFromIndices([]int{702, 0})) // "aaa1"
+fmt.Println(cell.MustFromIndices(702, 0)) // "aaa1"
 ```
 
 ## Properties

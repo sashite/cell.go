@@ -293,17 +293,17 @@ func TestFromIndices(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := FromIndices(tt.input)
+			result, err := FromIndices(tt.input...)
 			if tt.expectError {
 				if err == nil {
-					t.Errorf("FromIndices(%v) expected error, got nil", tt.input)
+					t.Errorf("FromIndices(%v...) expected error, got nil", tt.input)
 				}
 			} else {
 				if err != nil {
-					t.Errorf("FromIndices(%v) unexpected error: %v", tt.input, err)
+					t.Errorf("FromIndices(%v...) unexpected error: %v", tt.input, err)
 				}
 				if result != tt.expected {
-					t.Errorf("FromIndices(%v) = %q, expected %q", tt.input, result, tt.expected)
+					t.Errorf("FromIndices(%v...) = %q, expected %q", tt.input, result, tt.expected)
 				}
 			}
 		})
@@ -312,19 +312,19 @@ func TestFromIndices(t *testing.T) {
 
 func TestMustFromIndices(t *testing.T) {
 	// Test successful conversion
-	result := MustFromIndices([]int{4, 3})
+	result := MustFromIndices(4, 3)
 	expected := "e4"
 	if result != expected {
-		t.Errorf("MustFromIndices([]int{4, 3}) = %q, expected %q", result, expected)
+		t.Errorf("MustFromIndices(4, 3) = %q, expected %q", result, expected)
 	}
 
 	// Test panic on invalid input
 	defer func() {
 		if r := recover(); r == nil {
-			t.Error("MustFromIndices([]int{}) expected panic, got none")
+			t.Error("MustFromIndices() expected panic, got none")
 		}
 	}()
-	MustFromIndices([]int{})
+	MustFromIndices()
 }
 
 // --- Round-trip Tests ---
@@ -345,9 +345,9 @@ func TestRoundTrip(t *testing.T) {
 				t.Fatalf("ToIndices(%q) failed: %v", coord, err)
 			}
 
-			result, err := FromIndices(indices)
+			result, err := FromIndices(indices...)
 			if err != nil {
-				t.Fatalf("FromIndices(%v) failed: %v", indices, err)
+				t.Fatalf("FromIndices(%v...) failed: %v", indices, err)
 			}
 
 			if result != coord {
@@ -368,9 +368,9 @@ func TestRoundTripFromIndices(t *testing.T) {
 
 	for _, indices := range testCases {
 		t.Run("", func(t *testing.T) {
-			coord, err := FromIndices(indices)
+			coord, err := FromIndices(indices...)
 			if err != nil {
-				t.Fatalf("FromIndices(%v) failed: %v", indices, err)
+				t.Fatalf("FromIndices(%v...) failed: %v", indices, err)
 			}
 
 			result, err := ToIndices(coord)
@@ -575,7 +575,7 @@ func BenchmarkFromIndices(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, idx := range indices {
-			FromIndices(idx)
+			FromIndices(idx...)
 		}
 	}
 }
@@ -585,6 +585,6 @@ func BenchmarkRoundTrip(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		indices, _ := ToIndices(coord)
-		FromIndices(indices)
+		FromIndices(indices...)
 	}
 }

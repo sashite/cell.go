@@ -191,20 +191,20 @@ func MustToIndices(s string) []int {
 	return indices
 }
 
-// FromIndices converts a slice of 0-indexed integers to a CELL coordinate.
+// FromIndices converts 0-indexed integers to a CELL coordinate.
 //
 // Examples:
 //
-//	cell.FromIndices([]int{0, 0})      // "a1", nil
-//	cell.FromIndices([]int{4, 3})      // "e4", nil
-//	cell.FromIndices([]int{0, 0, 0})   // "a1A", nil
-//	cell.FromIndices([]int{25, 25, 25}) // "z26Z", nil
-//	cell.FromIndices([]int{26, 0, 26}) // "aa1AA", nil
-//	cell.FromIndices([]int{})          // "", error
-//	cell.FromIndices([]int{-1, 0})     // "", error
-func FromIndices(indices []int) (string, error) {
+//	cell.FromIndices(0, 0)      // "a1", nil
+//	cell.FromIndices(4, 3)      // "e4", nil
+//	cell.FromIndices(0, 0, 0)   // "a1A", nil
+//	cell.FromIndices(25, 25, 25) // "z26Z", nil
+//	cell.FromIndices(26, 0, 26) // "aa1AA", nil
+//	cell.FromIndices()          // "", error
+//	cell.FromIndices(-1, 0)     // "", error
+func FromIndices(indices ...int) (string, error) {
 	if len(indices) == 0 {
-		return "", errors.New("cannot convert empty slice to CELL coordinate")
+		return "", errors.New("cannot convert empty indices to CELL coordinate")
 	}
 
 	var builder strings.Builder
@@ -225,17 +225,17 @@ func FromIndices(indices []int) (string, error) {
 	return result, nil
 }
 
-// MustFromIndices converts a slice of 0-indexed integers to a CELL coordinate.
+// MustFromIndices converts 0-indexed integers to a CELL coordinate.
 //
 // Returns the coordinate on success, panics on failure.
 //
 // Examples:
 //
-//	cell.MustFromIndices([]int{4, 3})      // "e4"
-//	cell.MustFromIndices([]int{0, 0, 0})   // "a1A"
-//	cell.MustFromIndices([]int{})          // panics
-func MustFromIndices(indices []int) string {
-	coord, err := FromIndices(indices)
+//	cell.MustFromIndices(4, 3)      // "e4"
+//	cell.MustFromIndices(0, 0, 0)   // "a1A"
+//	cell.MustFromIndices()          // panics
+func MustFromIndices(indices ...int) string {
+	coord, err := FromIndices(indices...)
 	if err != nil {
 		panic(err)
 	}
