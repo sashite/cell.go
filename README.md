@@ -15,7 +15,7 @@ This library implements the [CELL Specification v1.0.0](https://sashite.dev/spec
 ## Installation
 
 ```bash
-go get [github.com/sashite/cell.go](https://github.com/sashite/cell.go)
+go get github.com/sashite/cell.go/v2
 
 ```
 
@@ -30,7 +30,7 @@ package main
 
 import (
 	"fmt"
-	"[github.com/sashite/cell.go](https://github.com/sashite/cell.go)"
+	"github.com/sashite/cell.go/v2"
 )
 
 func main() {
