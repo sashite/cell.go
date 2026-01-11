@@ -4,293 +4,123 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/sashite/cell.go)](https://goreportcard.com/report/github.com/sashite/cell.go)
 [![License](https://img.shields.io/github/license/sashite/cell.go)](https://github.com/sashite/cell.go/blob/main/LICENSE)
 
-> **CELL** (Coordinate Encoding for Layered Locations) implementation for Go.
+> Idiomatic Go implementation of the **CELL** (Coordinate Encoding for Layered Locations) specification.
 
 ## What is CELL?
 
-CELL (Coordinate Encoding for Layered Locations) is a standardized format for representing coordinates on multi-dimensional game boards using a cyclical ASCII character system. CELL supports unlimited dimensional coordinate systems through the systematic repetition of three distinct character sets.
+CELL is a standardized format for representing coordinates on multi-dimensional game boards using a cyclical ASCII character system. It allows for concise, human-readable coordinates that scale to any number of dimensions (e.g., `a1`, `z9`, `aa1`, `a1A`).
 
-This library implements the [CELL Specification v1.0.0](https://sashite.dev/specs/cell/1.0.0/).
+This library implements the [CELL Specification v1.0.0](https://sashite.dev/specs/cell/1.0.0/). It is designed for high performance and strict adherence to Go standards (`strconv`-style API).
 
 ## Installation
 
 ```bash
-go get github.com/sashite/cell.go
+go get [github.com/sashite/cell.go](https://github.com/sashite/cell.go)
+
 ```
 
-## CELL Format
-
-CELL uses a cyclical three-character-set system that repeats indefinitely based on dimensional position:
-
-| Dimension | Condition | Character Set | Examples |
-|-----------|-----------|---------------|----------|
-| 1st, 4th, 7th… | n % 3 = 1 | Latin lowercase (`a`–`z`) | `a`, `e`, `aa`, `file` |
-| 2nd, 5th, 8th… | n % 3 = 2 | Positive integers | `1`, `8`, `10`, `256` |
-| 3rd, 6th, 9th… | n % 3 = 0 | Latin uppercase (`A`–`Z`) | `A`, `C`, `AA`, `LAYER` |
-
 ## Usage
+
+### 1. Parsing (String to Coordinates)
+
+Use `Parse` to convert a CELL string into a slice of integers.
 
 ```go
 package main
 
 import (
-    "fmt"
-    "github.com/sashite/cell.go/cell"
+	"fmt"
+	"[github.com/sashite/cell.go](https://github.com/sashite/cell.go)"
 )
 
 func main() {
-    // Validation
-    fmt.Println(cell.Valid("a1"))       // true (2D coordinate)
-    fmt.Println(cell.Valid("a1A"))      // true (3D coordinate)
-    fmt.Println(cell.Valid("e4"))       // true (2D coordinate)
-    fmt.Println(cell.Valid("h8Hh8"))    // true (5D coordinate)
-    fmt.Println(cell.Valid("*"))        // false (not a CELL coordinate)
-    fmt.Println(cell.Valid("a0"))       // false (invalid numeral)
-    fmt.Println(cell.Valid(""))         // false (empty string)
+	// Standard parsing
+	coords, err := cell.Parse("c3C")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(coords) // Output: [2, 2, 2]
 
-    // Dimensional analysis
-    fmt.Println(cell.Dimensions("a1"))     // 2
-    fmt.Println(cell.Dimensions("a1A"))    // 3
-    fmt.Println(cell.Dimensions("h8Hh8"))  // 5
-    fmt.Println(cell.Dimensions("foobar")) // 1
-
-    // Parse coordinate into dimensional components
-    components, err := cell.Parse("a1A")
-    if err == nil {
-        fmt.Println(components) // ["a", "1", "A"]
-    }
-
-    components, err = cell.Parse("h8Hh8")
-    if err == nil {
-        fmt.Println(components) // ["h", "8", "H", "h", "8"]
-    }
-
-    components, err = cell.Parse("foobar")
-    if err == nil {
-        fmt.Println(components) // ["foobar"]
-    }
-
-    _, err = cell.Parse("1nvalid")
-    fmt.Println(err) // error: invalid CELL coordinate: 1nvalid
-
-    // Must-style parsing (panics on error)
-    components = cell.MustParse("a1A") // ["a", "1", "A"]
-
-    // Convert coordinates to 0-indexed integer slices
-    indices, err := cell.ToIndices("a1")
-    if err == nil {
-        fmt.Println(indices) // [0, 0]
-    }
-
-    indices, err = cell.ToIndices("e4")
-    if err == nil {
-        fmt.Println(indices) // [4, 3]
-    }
-
-    indices, err = cell.ToIndices("a1A")
-    if err == nil {
-        fmt.Println(indices) // [0, 0, 0]
-    }
-
-    indices, err = cell.ToIndices("b2B")
-    if err == nil {
-        fmt.Println(indices) // [1, 1, 1]
-    }
-
-    // Must-style conversion (panics on error)
-    indices = cell.MustToIndices("e4") // [4, 3]
-
-    // Convert 0-indexed integers to CELL coordinates
-    coord, err := cell.FromIndices(0, 0)
-    if err == nil {
-        fmt.Println(coord) // "a1"
-    }
-
-    coord, err = cell.FromIndices(4, 3)
-    if err == nil {
-        fmt.Println(coord) // "e4"
-    }
-
-    coord, err = cell.FromIndices(0, 0, 0)
-    if err == nil {
-        fmt.Println(coord) // "a1A"
-    }
-
-    // Must-style conversion (panics on error)
-    coord = cell.MustFromIndices(1, 1, 1) // "b2B"
-
-    // Round-trip conversion
-    indices = cell.MustToIndices("e4")
-    coord = cell.MustFromIndices(indices...)
-    fmt.Println(coord) // "e4"
+	// Helper for constants or trusted input (panics on error)
+	c := cell.MustParse("a1")
+	fmt.Println(c) // Output: [0, 0]
 }
+
 ```
 
-## Format Specification
+### 2. Formatting (Coordinates to String)
 
-### Dimensional Patterns
+Use `Format` to convert integer coordinates back to a CELL string. This function accepts a variadic number of arguments, making it easy to use with any dimension.
 
-| Dimensions | Pattern | Examples |
-|------------|---------|----------|
-| 1D | `<lower>` | `a`, `e`, `file` |
-| 2D | `<lower><integer>` | `a1`, `e4`, `aa10` |
-| 3D | `<lower><integer><upper>` | `a1A`, `e4B` |
-| 4D | `<lower><integer><upper><lower>` | `a1Ab`, `e4Bc` |
-| 5D | `<lower><integer><upper><lower><integer>` | `a1Ab2` |
+```go
+// 2D Coordinate (e.g., Chess)
+s1 := cell.Format(0, 0)
+fmt.Println(s1) // Output: "a1"
 
-### Regular Expression
+// 3D Coordinate
+s2 := cell.Format(2, 2, 2)
+fmt.Println(s2) // Output: "c3C"
 
-```regex
-^[a-z]+(?:[1-9][0-9]*[A-Z]+[a-z]+)*(?:[1-9][0-9]*[A-Z]*)?$
+// Large coordinates (Extended alphabet)
+s3 := cell.Format(26, 0)
+fmt.Println(s3) // Output: "aa1"
+
 ```
 
-### Valid Examples
+### 3. High Performance (Zero-Allocation)
 
-| Coordinate | Dimensions | Description |
-|------------|------------|-------------|
-| `a` | 1D | Single file |
-| `a1` | 2D | Standard chess-style |
-| `e4` | 2D | Chess center |
-| `a1A` | 3D | 3D tic-tac-toe |
-| `h8Hh8` | 5D | Multi-dimensional |
-| `aa1AA` | 3D | Extended alphabet |
+For game engines and "hot paths" where garbage collection overhead matters, use `AppendParse`. This pattern (similar to `strconv.AppendInt`) allows you to reuse existing memory buffers.
 
-### Invalid Examples
+```go
+// Pre-allocate a buffer once (capacity of 3 for 3D coords)
+buffer := make([]int, 0, 3)
 
-| String | Reason |
-|--------|--------|
-| `""` | Empty string |
-| `1` | Starts with digit |
-| `A` | Starts with uppercase |
-| `a0` | Zero is not a valid positive integer |
-| `a01` | Leading zero in numeric dimension |
-| `aA` | Missing numeric dimension |
-| `a1a` | Missing uppercase dimension |
-| `a1A1` | Numeric after uppercase without lowercase |
+// In your game loop:
+inputs := []string{"a1", "b2", "c3"}
+
+for _, input := range inputs {
+	// Reset length to 0, keep capacity (no allocation)
+	buffer = buffer[:0]
+
+	// Parse directly into the buffer
+	var err error
+	buffer, err = cell.AppendParse(buffer, input)
+	if err != nil {
+		continue
+	}
+
+	// Process coordinates...
+	_ = buffer[0]
+}
+
+```
 
 ## API Reference
 
-### Validation
+The API mimics the standard library's `strconv` and `strings` packages for familiarity.
 
 ```go
-func Valid(s string) bool
+// Parse converts a CELL string to a slice of coordinates.
+func Parse(s string) ([]int, error)
+
+// Format converts a list of coordinates to a CELL string.
+// It is variadic, accepting any number of dimensions.
+func Format(indices ...int) string
+
+// MustParse is a helper that panics if parsing fails.
+func MustParse(s string) []int
+
+// AppendParse appends the parsed coordinates to dst and returns the extended slice.
+// This allows zero-allocation parsing when reusing a buffer.
+func AppendParse(dst []int, s string) ([]int, error)
+
 ```
-
-### Parsing
-
-```go
-func Parse(s string) ([]string, error)
-func MustParse(s string) []string  // panics on error
-```
-
-### Dimensional Analysis
-
-```go
-func Dimensions(s string) int
-```
-
-### Coordinate Conversion
-
-```go
-func ToIndices(s string) ([]int, error)
-func MustToIndices(s string) []int  // panics on error
-
-func FromIndices(indices ...int) (string, error)
-func MustFromIndices(indices ...int) string  // panics on error
-```
-
-### Regular Expression Access
-
-```go
-func Regex() *regexp.Regexp
-```
-
-## Game Examples
-
-### Chess (8×8)
-
-```go
-// Standard chess coordinates
-chessSquares := make([]string, 0, 64)
-for file := 'a'; file <= 'h'; file++ {
-    for rank := 1; rank <= 8; rank++ {
-        chessSquares = append(chessSquares, fmt.Sprintf("%c%d", file, rank))
-    }
-}
-
-// All are valid
-for _, square := range chessSquares {
-    fmt.Println(cell.Valid(square)) // true
-}
-
-// Convert position
-fmt.Println(cell.MustToIndices("e4")) // [4, 3]
-fmt.Println(cell.MustToIndices("h8")) // [7, 7]
-```
-
-### Shōgi (9×9)
-
-```go
-// Shōgi board positions
-fmt.Println(cell.Valid("e5")) // true (center)
-fmt.Println(cell.Valid("i9")) // true (corner)
-
-fmt.Println(cell.MustToIndices("e5")) // [4, 4]
-```
-
-### 3D Tic-Tac-Toe (3×3×3)
-
-```go
-// Three-dimensional coordinates
-fmt.Println(cell.Valid("a1A")) // true
-fmt.Println(cell.Valid("b2B")) // true
-fmt.Println(cell.Valid("c3C")) // true
-
-// Winning diagonal
-diagonal := []string{"a1A", "b2B", "c3C"}
-for _, coord := range diagonal {
-    fmt.Println(cell.MustToIndices(coord))
-}
-// [0, 0, 0]
-// [1, 1, 1]
-// [2, 2, 2]
-```
-
-## Extended Alphabet
-
-CELL supports extended alphabet notation for large boards:
-
-```go
-// Single letters: a-z (positions 0-25)
-fmt.Println(cell.MustToIndices("z1")) // [25, 0]
-
-// Double letters: aa-zz (positions 26-701)
-fmt.Println(cell.MustToIndices("aa1")) // [26, 0]
-fmt.Println(cell.MustToIndices("ab1")) // [27, 0]
-fmt.Println(cell.MustToIndices("zz1")) // [701, 0]
-
-// And so on...
-fmt.Println(cell.MustFromIndices(702, 0)) // "aaa1"
-```
-
-## Properties
-
-- **Multi-dimensional**: Supports unlimited dimensional coordinate systems
-- **Cyclical**: Uses systematic three-character-set repetition
-- **ASCII-based**: Pure ASCII characters for universal compatibility
-- **Unambiguous**: Each coordinate maps to exactly one location
-- **Scalable**: Extends naturally from 1D to unlimited dimensions
-- **Rule-agnostic**: Independent of specific game mechanics
 
 ## Related Specifications
 
-- [Game Protocol](https://sashite.dev/game-protocol/) — Conceptual foundation
-- [CELL Specification](https://sashite.dev/specs/cell/1.0.0/) — Official specification
+* [Game Protocol](https://sashite.dev/game-protocol/) — Conceptual foundation
+* [CELL Specification](https://sashite.dev/specs/cell/1.0.0/) — Official specification
 
 ## License
 
 Available as open source under the [Apache License 2.0](https://opensource.org/licenses/Apache-2.0).
-
-## About
-
-Maintained by [Sashité](https://sashite.com/) — promoting chess variants and sharing the beauty of board game cultures.
