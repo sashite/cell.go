@@ -118,8 +118,9 @@ func AppendParse(dst []int, s string) ([]int, error)
 
 ## Related Specifications
 
-* [Game Protocol](https://sashite.dev/game-protocol/) — Conceptual foundation
-* [CELL Specification](https://sashite.dev/specs/cell/1.0.0/) — Official specification
+- [Game Protocol](https://sashite.dev/game-protocol/) — Conceptual foundation
+- [CELL Specification](https://sashite.dev/specs/cell/1.0.0/) — Official specification
+- [CELL Examples](https://sashite.dev/specs/cell/1.0.0/examples/) — Usage examples
 
 ## License
 
