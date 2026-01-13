@@ -1,198 +1,60 @@
+// Package cell implements CELL (Coordinate Encoding for Layered Locations),
+// a standardized format for representing coordinates on multi-dimensional game boards.
+//
+// This package implements the [CELL Specification v1.0.0].
+//
+// # Implementation Constraints
+//
+// This implementation enforces the following constraints for safety and performance:
+//
+//   - Maximum 3 dimensions (sufficient for 1D, 2D, 3D boards)
+//   - Maximum index value of 255 per dimension (fits in uint8)
+//   - Maximum string length of 7 characters ("iv256IV")
+//
+// # Parsing
+//
+// Use [Parse] to convert a CELL string to a [Coordinate]:
+//
+//	coord, err := cell.Parse("e4")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Println(coord.Indices()) // [4, 3]
+//
+// For trusted input or constants, use [MustParse]:
+//
+//	var origin = cell.MustParse("a1")
+//
+// # Formatting
+//
+// Use [Coordinate.String] or [Format] to convert back to a CELL string:
+//
+//	coord := cell.NewCoordinate(4, 3)
+//	fmt.Println(coord.String()) // "e4"
+//
+//	s := cell.Format(2, 2, 2)
+//	fmt.Println(s) // "c3C"
+//
+// # Validation
+//
+// Use [Validate] for detailed errors or [IsValid] for a simple boolean check:
+//
+//	if err := cell.Validate("a0"); err != nil {
+//	    fmt.Println(err) // "cell: leading zero in number"
+//	}
+//
+//	if cell.IsValid("e4") {
+//	    // valid coordinate
+//	}
+//
+// # Error Handling
+//
+// All parsing errors are sentinel errors that can be checked with [errors.Is]:
+//
+//	coord, err := cell.Parse(input)
+//	if errors.Is(err, cell.ErrLeadingZero) {
+//	    // handle leading zero specifically
+//	}
+//
+// [CELL Specification v1.0.0]: https://sashite.dev/specs/cell/1.0.0/
 package cell
-
-import (
-	"errors"
-	"fmt"
-	"strconv"
-	"strings"
-	"unicode"
-)
-
-// Common errors
-var (
-	ErrEmpty         = errors.New("cell: empty string")
-	ErrInvalidFormat = errors.New("cell: invalid format")
-	ErrInvalidChar   = errors.New("cell: character out of sequence or invalid")
-)
-
-// -----------------------------------------------------------------------------
-// Parsing API
-// -----------------------------------------------------------------------------
-
-// Parse converts a CELL string (e.g., "c3C") into a slice of integer coordinates.
-// It returns nil and an error if the format is invalid.
-func Parse(s string) ([]int, error) {
-	if len(s) == 0 {
-		return nil, ErrEmpty
-	}
-	// Pre-allocate for common cases (2D or 3D) to avoid immediate re-alloc
-	dst := make([]int, 0, 3)
-
-	dst, err := AppendParse(dst, s)
-	if err != nil {
-		// Crucial: return nil slice on error to satisfy strict equality checks
-		// and idiomatic Go behavior (don't return partial data on error).
-		return nil, err
-	}
-
-	return dst, nil
-}
-
-// MustParse converts a CELL string into coordinates and panics on error.
-// Useful for initializing constants or tests.
-func MustParse(s string) []int {
-	coords, err := Parse(s)
-	if err != nil {
-		panic(fmt.Sprintf("cell: MustParse(%q) failed: %v", s, err))
-	}
-	return coords
-}
-
-// AppendParse parses the CELL string s and appends the resulting coordinates to dst.
-// This allows zero-allocation parsing if dst has sufficient capacity.
-// Note: On error, dst may contain partial data appended before the error occurred.
-func AppendParse(dst []int, s string) ([]int, error) {
-	if len(s) == 0 {
-		return dst, ErrEmpty
-	}
-
-	cursor := 0
-	dim := 0 // 0=Lower, 1=Digit, 2=Upper
-	length := len(s)
-
-	for cursor < length {
-		mode := dim % 3
-		start := cursor
-
-		// Consume characters valid for the current dimension mode
-		switch mode {
-		case 0: // Lowercase (a-z)
-			for cursor < length && unicode.IsLower(rune(s[cursor])) {
-				cursor++
-			}
-		case 1: // Digits (0-9)
-			for cursor < length && unicode.IsDigit(rune(s[cursor])) {
-				cursor++
-			}
-		case 2: // Uppercase (A-Z)
-			for cursor < length && unicode.IsUpper(rune(s[cursor])) {
-				cursor++
-			}
-		}
-
-		// If no characters were consumed, implies the character at 'cursor'
-		// is invalid for the current expected dimension.
-		if cursor == start {
-			return dst, ErrInvalidChar
-		}
-
-		// Decode the segment
-		segment := s[start:cursor]
-		val, err := decodeSegment(segment, mode)
-		if err != nil {
-			return dst, err
-		}
-
-		dst = append(dst, val)
-		dim++
-	}
-
-	return dst, nil
-}
-
-// decodeSegment converts a substring to its integer value based on mode.
-func decodeSegment(s string, mode int) (int, error) {
-	// Mode 1: Digits (1-based in string, 0-based in int)
-	if mode == 1 {
-		val, err := strconv.Atoi(s)
-		if err != nil {
-			return 0, ErrInvalidFormat
-		}
-		if val < 1 {
-			return 0, ErrInvalidFormat // "0" is not valid in CELL (starts at "1")
-		}
-		return val - 1, nil
-	}
-
-	// Mode 0 & 2: Letters (Bijective Hexavigesimal System)
-	// a=0, z=25, aa=26...
-	val := 0
-	baseChar := 'a'
-	if mode == 2 {
-		baseChar = 'A'
-	}
-
-	for _, r := range s {
-		val = val*26 + int(r-baseChar) + 1
-	}
-	return val - 1, nil
-}
-
-// -----------------------------------------------------------------------------
-// Formatting API
-// -----------------------------------------------------------------------------
-
-// Format converts a list of integer coordinates into a CELL string.
-// It accepts a variadic number of integers.
-func Format(indices ...int) string {
-	if len(indices) == 0 {
-		return ""
-	}
-
-	// Heuristic for buffer size: ~2 chars per coord + safety
-	var sb strings.Builder
-	sb.Grow(len(indices) * 2)
-
-	for dim, val := range indices {
-		if val < 0 {
-			// Negative indices are not representable in standard CELL.
-			// We skip them or treat them as invalid.
-			// In this implementation, we skip to avoid generating garbage.
-			continue
-		}
-
-		mode := dim % 3
-		switch mode {
-		case 0: // Lowercase
-			writeAlpha(&sb, val, 'a')
-		case 1: // Digits
-			sb.WriteString(strconv.Itoa(val + 1))
-		case 2: // Uppercase
-			writeAlpha(&sb, val, 'A')
-		}
-	}
-
-	return sb.String()
-}
-
-// MustFormat acts like Format.
-// Since Format is safe/permissive, this is an alias for consistency.
-func MustFormat(indices ...int) string {
-	return Format(indices...)
-}
-
-// writeAlpha converts an index to bijective base-26 string (a, ..., z, aa, ...)
-// and writes it to the builder.
-func writeAlpha(sb *strings.Builder, val int, baseChar rune) {
-	if val < 0 {
-		return
-	}
-
-	// Algorithm for bijective base-26.
-	// We build the string in a small stack buffer to avoid heap allocation.
-	var buf [20]byte
-	i := len(buf)
-
-	n := val
-	for {
-		i--
-		rem := n % 26
-		buf[i] = byte(baseChar) + byte(rem)
-		n = (n / 26) - 1
-		if n < 0 {
-			break
-		}
-	}
-
-	sb.Write(buf[i:])
-}
