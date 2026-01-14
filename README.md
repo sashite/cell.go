@@ -89,14 +89,14 @@ if err := cell.Validate("a0"); err != nil {
 coord := cell.MustParse("e4")
 
 // Get dimensions count
-coord.Dims() // 2
+fmt.Println(coord.Dims()) // 2
 
 // Get indices as slice
-coord.Indices() // []uint8{4, 3}
+fmt.Println(coord.Indices()) // [4, 3]
 
 // Access individual index (panics if out of range)
-coord.At(0) // 4
-coord.At(1) // 3
+fmt.Println(coord.At(0)) // 4
+fmt.Println(coord.At(1)) // 3
 ```
 
 ## API Reference
@@ -136,6 +136,7 @@ func (c Coordinate) String() string
 func Parse(s string) (Coordinate, error)
 
 // MustParse is like Parse but panics on error.
+// Use for constants or trusted input.
 func MustParse(s string) Coordinate
 ```
 
