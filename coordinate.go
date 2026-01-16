@@ -35,9 +35,7 @@ func NewCoordinate(indices ...uint8) Coordinate {
 
 	var c Coordinate
 	c.dims = uint8(len(indices))
-	for i, idx := range indices {
-		c.indices[i] = idx
-	}
+	copy(c.indices[:], indices)
 	return c
 }
 
